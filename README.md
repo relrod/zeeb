@@ -8,3 +8,13 @@ such a way that the words all connect, a la a crossword puzzle or another game
 who shall not be named.
 
 This implementation is built on Bevy in Rust.
+
+## Screenshot
+
+(The tiles don't snap to the grid yet, ignore that :D)
+
+<img src="screenshot.png">
+
+## License
+
+Apache-2.0 OR MIT

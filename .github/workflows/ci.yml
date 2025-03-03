@@ -1,0 +1,54 @@
+---
+name: CI
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:11
+      env:
+        PATH: /bin:/sbin:/usr/bin:/usr/sbin:/github/home/.cargo/bin
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        include:
+          - cmd: cargo fmt --check
+            name: rustfmt
+          - cmd: cargo clippy
+            name: clippy
+          - cmd: cargo build --release
+            name: release
+
+    steps:
+      - name: Install build deps
+        run: |
+          apt-get update
+          apt-get install -y libasound2-dev libudev-dev build-essential git curl \
+            pkg-config
+
+      - uses: actions/checkout@v2
+
+      - name: Install toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo $HOME
+          whoami
+
+      - name: Enable rust-cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
+
+      - name: Run ${{ matrix.name }}
+        run: ${{ matrix.cmd }}
+
+      - name: Upload release
+        if: "${{ matrix.name == 'release' }}"
+        uses: actions/upload-artifact@v4
+        with:
+          name: remrof
+          path: target/release/remrof

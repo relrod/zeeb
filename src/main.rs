@@ -13,12 +13,14 @@ const LETTER_ROWS: [&str; 12] = [
     "OIINNY", "AEIOUU", "AAEEOO",
 ];
 
+#[allow(dead_code)]
 #[derive(Component)]
 struct Tile {
     x: usize,
     y: usize,
 }
 
+#[allow(dead_code)]
 #[derive(Component)]
 struct TileReference(Option<Entity>);
 
@@ -43,10 +45,7 @@ fn setup(mut commands: Commands, mut window: Single<&mut Window>) {
         TILE_SIZE * BOARD_SIZE as f32 + (TILE_SIZE * 2.0),
     );
     window.title = String::from("Zeeb");
-    commands.spawn((
-        Camera2d::default(),
-        Transform::from_xyz(0.0, -TILE_SIZE, 0.0),
-    ));
+    commands.spawn((Camera2d, Transform::from_xyz(0.0, -TILE_SIZE, 0.0)));
 }
 
 fn draw_board(mut commands: Commands) {
@@ -130,11 +129,9 @@ fn drag_tile(
         let (camera, camera_transform) = camera_query.single();
         if let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, event.position) {
             for (mut draggable, mut transform) in query.iter_mut() {
-                if mouse_input.pressed(MouseButton::Left) {
-                    if draggable.is_dragging {
-                        transform.translation =
-                            Vec3::new(world_position.x, world_position.y, transform.translation.z);
-                    }
+                if mouse_input.pressed(MouseButton::Left) && draggable.is_dragging {
+                    transform.translation =
+                        Vec3::new(world_position.x, world_position.y, transform.translation.z);
                 }
 
                 if mouse_input.just_pressed(MouseButton::Left) {
@@ -145,10 +142,8 @@ fn drag_tile(
                     }
                 }
 
-                if mouse_input.just_released(MouseButton::Left) {
-                    if draggable.is_dragging {
-                        draggable.is_dragging = false;
-                    }
+                if mouse_input.just_released(MouseButton::Left) && draggable.is_dragging {
+                    draggable.is_dragging = false;
                 }
             }
         }

@@ -22,10 +22,17 @@ struct Tile {
 #[derive(Component)]
 struct TileReference(Option<Entity>);
 
+#[derive(Component)]
+struct Draggable {
+    is_dragging: bool,
+    initial_position: Vec2,
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, (setup, draw_board, create_letter_tiles))
+        .add_systems(Update, drag_tile)
         .run();
 }
 
@@ -96,6 +103,10 @@ fn create_letter_tiles(mut commands: Commands) {
                     Sprite::from_color(Color::srgb(0.75, 0.6, 0.3), Vec2::splat(TILE_SIZE)),
                     Transform::from_xyz(x, y, 1.0),
                     TileReference(None),
+                    Draggable {
+                        is_dragging: false,
+                        initial_position: Vec2::new(x, y),
+                    },
                 ))
                 .with_children(|builder| {
                     builder.spawn((
@@ -105,6 +116,41 @@ fn create_letter_tiles(mut commands: Commands) {
                         Transform::from_translation(Vec3::Z),
                     ));
                 });
+        }
+    }
+}
+
+fn drag_tile(
+    mouse_input: Res<ButtonInput<MouseButton>>,
+    mut query: Query<(&mut Draggable, &mut Transform)>,
+    mut events: EventReader<CursorMoved>,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
+) {
+    for event in events.read() {
+        let (camera, camera_transform) = camera_query.single();
+        if let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, event.position) {
+            for (mut draggable, mut transform) in query.iter_mut() {
+                if mouse_input.pressed(MouseButton::Left) {
+                    if draggable.is_dragging {
+                        transform.translation =
+                            Vec3::new(world_position.x, world_position.y, transform.translation.z);
+                    }
+                }
+
+                if mouse_input.just_pressed(MouseButton::Left) {
+                    let tile_position = transform.translation.xy();
+                    if tile_position.distance(world_position) < TILE_SIZE / 2.0 {
+                        draggable.is_dragging = true;
+                        draggable.initial_position = world_position;
+                    }
+                }
+
+                if mouse_input.just_released(MouseButton::Left) {
+                    if draggable.is_dragging {
+                        draggable.is_dragging = false;
+                    }
+                }
+            }
         }
     }
 }

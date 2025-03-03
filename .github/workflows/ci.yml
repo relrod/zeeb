@@ -50,5 +50,5 @@ jobs:
         if: "${{ matrix.name == 'release' }}"
         uses: actions/upload-artifact@v4
         with:
-          name: remrof
-          path: target/release/remrof
+          name: zeeb
+          path: target/release/zeeb

@@ -20,14 +20,64 @@ struct Tile {
     y: usize,
 }
 
-#[allow(dead_code)]
-#[derive(Component)]
-struct TileReference(Option<Entity>);
-
 #[derive(Component)]
 struct Draggable {
     is_dragging: bool,
-    initial_position: Vec2,
+    last_grid_position: (f32, f32),
+}
+
+#[derive(Resource)]
+struct BoardState {
+    grid: [[Option<Entity>; BOARD_SIZE]; BOARD_SIZE],
+}
+
+impl Default for BoardState {
+    fn default() -> Self {
+        BoardState {
+            grid: [[None; BOARD_SIZE]; BOARD_SIZE],
+        }
+    }
+}
+
+impl BoardState {
+    fn is_occupied(&self, col: usize, row: usize) -> bool {
+        self.grid[row][col].is_some()
+    }
+
+    fn place_tile(&mut self, col: usize, row: usize, entity: Entity) {
+        self.grid[row][col] = Some(entity);
+    }
+
+    fn remove_tile(&mut self, col: usize, row: usize) {
+        self.grid[row][col] = None;
+    }
+
+    fn world_from_xy(x: usize, y: usize) -> (f32, f32) {
+        let x = x as f32 * TILE_SIZE - BOARD_CENTER + TILE_SIZE / 2.0;
+        let y = -(y as f32 * TILE_SIZE - BOARD_CENTER + TILE_SIZE / 2.0);
+        (x, y)
+    }
+
+    /// Take a distance of centroids to determine the closest grid square to the
+    /// given world point. This iterates the whole board space, but at only 100
+    /// cells it's not a big deal. It gets called when the player *stops*
+    /// clicking after a drag.
+    fn closest_cell_to_world(x: f32, y: f32) -> (usize, usize) {
+        let mut min_distance = f32::MAX;
+        let mut closest_cell = (0, 0);
+        for row in 0..BOARD_SIZE {
+            for col in 0..BOARD_SIZE {
+                // Center of the cell
+                let (cell_world_x, cell_world_y) = BoardState::world_from_xy(col, row);
+                let distance = ((cell_world_x - x).powi(2) + (cell_world_y - y).powi(2)).sqrt();
+                if distance < min_distance {
+                    min_distance = distance;
+                    closest_cell = (col, row);
+                }
+            }
+        }
+        closest_cell
+    }
 }
 
 fn main() {
@@ -46,6 +96,7 @@ fn setup(mut commands: Commands, mut window: Single<&mut Window>) {
     );
     window.title = String::from("Zeeb");
     commands.spawn((Camera2d, Transform::from_xyz(0.0, -TILE_SIZE, 0.0)));
+    commands.insert_resource(BoardState::default());
 }
 
 fn draw_board(mut commands: Commands) {
@@ -57,10 +108,8 @@ fn draw_board(mut commands: Commands) {
                 Color::srgb(0.9, 0.85, 0.7)
             };
 
-            let x =
-                col as f32 * TILE_SIZE - (BOARD_SIZE as f32 * TILE_SIZE) / 2.0 + (TILE_SIZE / 2.0);
-            let y =
-                row as f32 * TILE_SIZE - (BOARD_SIZE as f32 * TILE_SIZE) / 2.0 + (TILE_SIZE / 2.0);
+            let x = col as f32 * TILE_SIZE - BOARD_CENTER + (TILE_SIZE / 2.0);
+            let y = row as f32 * TILE_SIZE - BOARD_CENTER + (TILE_SIZE / 2.0);
 
             commands.spawn((
                 Sprite {
@@ -101,10 +150,9 @@ fn create_letter_tiles(mut commands: Commands) {
                 .spawn((
                     Sprite::from_color(Color::srgb(0.75, 0.6, 0.3), Vec2::splat(TILE_SIZE)),
                     Transform::from_xyz(x, y, 1.0),
-                    TileReference(None),
                     Draggable {
                         is_dragging: false,
-                        initial_position: Vec2::new(x, y),
+                        last_grid_position: (x, y),
                     },
                 ))
                 .with_children(|builder| {
@@ -121,14 +169,15 @@ fn create_letter_tiles(mut commands: Commands) {
 
 fn drag_tile(
     mouse_input: Res<ButtonInput<MouseButton>>,
-    mut query: Query<(&mut Draggable, &mut Transform)>,
+    mut query: Query<(Entity, &mut Draggable, &mut Transform)>,
     mut events: EventReader<CursorMoved>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
+    mut board: ResMut<BoardState>,
 ) {
     for event in events.read() {
         let (camera, camera_transform) = camera_query.single();
         if let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, event.position) {
-            for (mut draggable, mut transform) in query.iter_mut() {
+            for (entity, mut draggable, mut transform) in query.iter_mut() {
                 if mouse_input.pressed(MouseButton::Left) && draggable.is_dragging {
                     transform.translation =
                         Vec3::new(world_position.x, world_position.y, transform.translation.z);
@@ -138,12 +187,47 @@ fn drag_tile(
                     let tile_position = transform.translation.xy();
                     if tile_position.distance(world_position) < TILE_SIZE / 2.0 {
                         draggable.is_dragging = true;
-                        draggable.initial_position = world_position;
                     }
                 }
 
                 if mouse_input.just_released(MouseButton::Left) && draggable.is_dragging {
                     draggable.is_dragging = false;
+
+                    let (col, row) =
+                        BoardState::closest_cell_to_world(world_position.x, world_position.y);
+
+                    if board.is_occupied(col, row) {
+                        // If the cell we're trying to move into is occupied, move the tile back
+                        let (last_x, last_y) = draggable.last_grid_position;
+                        transform.translation = Vec3::new(last_x, last_y, transform.translation.z);
+                        // Nothing changed, so don't update the board state.
+                    } else {
+                        // Otherwise it's a free cell, so figure out the world position of the cell
+                        // and move the tile there.
+                        let (cell_center_world_x, cell_center_world_y) =
+                            BoardState::world_from_xy(col, row);
+                        transform.translation = Vec3::new(
+                            cell_center_world_x,
+                            cell_center_world_y,
+                            transform.translation.z,
+                        );
+
+                        // Update internal state so we know if another tile can move here
+                        board.place_tile(col, row, entity);
+
+                        // Then free up the old position
+                        let (old_col, old_row) = BoardState::closest_cell_to_world(
+                            draggable.last_grid_position.0,
+                            draggable.last_grid_position.1,
+                        );
+                        board.remove_tile(old_col, old_row);
+
+                        // This is what we'll snap the tile back to, if the player tries to
+                        // move it to an occupied cell in the future. Do this after we free up
+                        // the old position, since we use the old value to determine where the
+                        // tile came from.
+                        draggable.last_grid_position = (cell_center_world_x, cell_center_world_y);
+                    }
                 }
             }
         }

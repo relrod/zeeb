@@ -209,6 +209,8 @@ fn drag_tile(
                         board.remove_tile(col, row);
                     }
                     draggable.is_on_board = false;
+                    // And still keep track of the new "last" position
+                    draggable.last_grid_position = world_position;
                     continue;
                 }
 

@@ -21,7 +21,7 @@ struct Draggable {
     is_dragging: bool,
     last_grid_position: Vec2,
     is_on_board: bool,
-    game_start_position: Vec2,
+    game_start_position: Vec3,
 }
 
 #[derive(Resource)]
@@ -146,12 +146,12 @@ fn create_letter_tiles(mut commands: Commands) {
             commands
                 .spawn((
                     Sprite::from_color(Color::srgb(0.75, 0.6, 0.3), Vec2::splat(TILE_SIZE)),
-                    Transform::from_xyz(x, y, 3.0),
+                    Transform::from_xyz(x, y, 100.0),
                     Draggable {
                         is_dragging: false,
                         last_grid_position: Vec2::new(x, y),
                         is_on_board: false,
-                        game_start_position: Vec2::new(x, y),
+                        game_start_position: Vec3::new(x, y, 100.0),
                     },
                     LetterTile,
                 ))
@@ -252,7 +252,7 @@ fn reset_tiles(
     if keyboard_input.just_pressed(KeyCode::KeyR) {
         for (mut draggable, mut transform) in query.iter_mut() {
             draggable.is_dragging = false; // Might be mid-drag when we reset
-            transform.translation = draggable.game_start_position.extend(0.0);
+            transform.translation = draggable.game_start_position;
         }
     }
 }

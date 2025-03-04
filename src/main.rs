@@ -13,18 +13,15 @@ const LETTER_ROWS: [&str; 12] = [
     "OIINNY", "AEIOUU", "AAEEOO",
 ];
 
-#[allow(dead_code)]
 #[derive(Component)]
-struct Tile {
-    x: usize,
-    y: usize,
-}
+struct LetterTile;
 
 #[derive(Component)]
 struct Draggable {
     is_dragging: bool,
     last_grid_position: (f32, f32),
     is_on_board: bool,
+    game_start_position: Vec2,
 }
 
 #[derive(Resource)]
@@ -85,7 +82,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, (setup, draw_board, create_letter_tiles))
-        .add_systems(Update, drag_tile)
+        .add_systems(Update, (drag_tile, reset_tiles))
         .run();
 }
 
@@ -119,7 +116,6 @@ fn draw_board(mut commands: Commands) {
                     ..default()
                 },
                 Transform::from_xyz(x, y, 0.0),
-                Tile { x: col, y: row },
             ));
         }
     }
@@ -155,7 +151,9 @@ fn create_letter_tiles(mut commands: Commands) {
                         is_dragging: false,
                         last_grid_position: (x, y),
                         is_on_board: false,
+                        game_start_position: Vec2::new(x, y),
                     },
+                    LetterTile,
                 ))
                 .with_children(|builder| {
                     builder.spawn((
@@ -248,6 +246,18 @@ fn drag_tile(
                     }
                 }
             }
+        }
+    }
+}
+
+fn reset_tiles(
+    mut query: Query<(&mut Draggable, &mut Transform), With<LetterTile>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::KeyR) {
+        for (mut draggable, mut transform) in query.iter_mut() {
+            draggable.is_dragging = false; // Might be mid-drag when we reset
+            transform.translation = draggable.game_start_position.extend(0.0);
         }
     }
 }

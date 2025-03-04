@@ -19,7 +19,7 @@ struct LetterTile;
 #[derive(Component)]
 struct Draggable {
     is_dragging: bool,
-    last_grid_position: Vec2,
+    last_position: Vec2,
     is_on_board: bool,
     game_start_position: Vec3,
 }
@@ -149,7 +149,7 @@ fn create_letter_tiles(mut commands: Commands) {
                     Transform::from_xyz(x, y, 100.0),
                     Draggable {
                         is_dragging: false,
-                        last_grid_position: Vec2::new(x, y),
+                        last_position: Vec2::new(x, y),
                         is_on_board: false,
                         game_start_position: Vec3::new(x, y, 100.0),
                     },
@@ -204,13 +204,12 @@ fn drag_tile(
                 if world_position.y < -BOARD_CENTER {
                     // But we still need to free up the grid cell if the tile was on the board
                     if draggable.is_on_board {
-                        let (col, row) =
-                            BoardState::closest_cell_to_world(draggable.last_grid_position);
+                        let (col, row) = BoardState::closest_cell_to_world(draggable.last_position);
                         board.remove_tile(col, row);
                     }
                     draggable.is_on_board = false;
                     // And still keep track of the new "last" position
-                    draggable.last_grid_position = world_position;
+                    draggable.last_position = world_position;
                     continue;
                 }
 
@@ -218,8 +217,7 @@ fn drag_tile(
 
                 if board.is_occupied(col, row) {
                     // If the cell we're trying to move into is occupied, move the tile back
-                    transform.translation =
-                        draggable.last_grid_position.extend(transform.translation.z);
+                    transform.translation = draggable.last_position.extend(transform.translation.z);
                     // Nothing changed, so don't update the board state.
                 } else {
                     // Otherwise it's a free cell, so figure out the world position of the cell
@@ -233,14 +231,14 @@ fn drag_tile(
 
                     // Then free up the old position
                     let (old_col, old_row) =
-                        BoardState::closest_cell_to_world(draggable.last_grid_position);
+                        BoardState::closest_cell_to_world(draggable.last_position);
                     board.remove_tile(old_col, old_row);
 
                     // This is what we'll snap the tile back to, if the player tries to
                     // move it to an occupied cell in the future. Do this after we free up
                     // the old position, since we use the old value to determine where the
                     // tile came from.
-                    draggable.last_grid_position = cell_center_world;
+                    draggable.last_position = cell_center_world;
                 }
             }
         }

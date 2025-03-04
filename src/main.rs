@@ -183,6 +183,7 @@ fn drag_tile(
                 if mouse_input.pressed(MouseButton::Left) && draggable.is_dragging {
                     transform.translation =
                         Vec3::new(world_position.x, world_position.y, transform.translation.z);
+                    break;
                 }
 
                 if mouse_input.just_pressed(MouseButton::Left) {

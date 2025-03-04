@@ -50,6 +50,14 @@ impl BoardState {
         self.grid[row][col] = None;
     }
 
+    fn reset(&mut self) {
+        for row in 0..BOARD_SIZE {
+            for col in 0..BOARD_SIZE {
+                self.grid[row][col] = None;
+            }
+        }
+    }
+
     fn world_from_xy(x: usize, y: usize) -> Vec2 {
         let x = x as f32 * TILE_SIZE - BOARD_CENTER + TILE_SIZE / 2.0;
         let y = -(y as f32 * TILE_SIZE - BOARD_CENTER + TILE_SIZE / 2.0);
@@ -248,11 +256,15 @@ fn drag_tile(
 fn reset_tiles(
     mut query: Query<(&mut Draggable, &mut Transform), With<LetterTile>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut board: ResMut<BoardState>,
 ) {
     if keyboard_input.just_pressed(KeyCode::KeyR) {
         for (mut draggable, mut transform) in query.iter_mut() {
             draggable.is_dragging = false; // Might be mid-drag when we reset
             transform.translation = draggable.game_start_position;
+            draggable.last_position = transform.translation.xy();
+            draggable.is_on_board = false;
         }
+        board.reset();
     }
 }

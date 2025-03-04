@@ -19,7 +19,7 @@ struct LetterTile;
 #[derive(Component)]
 struct Draggable {
     is_dragging: bool,
-    last_grid_position: (f32, f32),
+    last_grid_position: Vec2,
     is_on_board: bool,
     game_start_position: Vec2,
 }
@@ -50,24 +50,24 @@ impl BoardState {
         self.grid[row][col] = None;
     }
 
-    fn world_from_xy(x: usize, y: usize) -> (f32, f32) {
+    fn world_from_xy(x: usize, y: usize) -> Vec2 {
         let x = x as f32 * TILE_SIZE - BOARD_CENTER + TILE_SIZE / 2.0;
         let y = -(y as f32 * TILE_SIZE - BOARD_CENTER + TILE_SIZE / 2.0);
-        (x, y)
+        Vec2::new(x, y)
     }
 
     /// Take a distance of centroids to determine the closest grid square to the
     /// given world point. This iterates the whole board space, but at only 100
     /// cells it's not a big deal. It gets called when the player *stops*
     /// clicking after a drag.
-    fn closest_cell_to_world(x: f32, y: f32) -> (usize, usize) {
+    fn closest_cell_to_world(world_pt: Vec2) -> (usize, usize) {
         let mut min_distance = f32::MAX;
         let mut closest_cell = (0, 0);
         for row in 0..BOARD_SIZE {
             for col in 0..BOARD_SIZE {
                 // Center of the cell
-                let (cell_world_x, cell_world_y) = BoardState::world_from_xy(col, row);
-                let distance = ((cell_world_x - x).powi(2) + (cell_world_y - y).powi(2)).sqrt();
+                let world_cell = BoardState::world_from_xy(col, row);
+                let distance = world_cell.distance(world_pt);
                 if distance < min_distance {
                     min_distance = distance;
                     closest_cell = (col, row);
@@ -146,10 +146,10 @@ fn create_letter_tiles(mut commands: Commands) {
             commands
                 .spawn((
                     Sprite::from_color(Color::srgb(0.75, 0.6, 0.3), Vec2::splat(TILE_SIZE)),
-                    Transform::from_xyz(x, y, 1.0),
+                    Transform::from_xyz(x, y, 3.0),
                     Draggable {
                         is_dragging: false,
-                        last_grid_position: (x, y),
+                        last_grid_position: Vec2::new(x, y),
                         is_on_board: false,
                         game_start_position: Vec2::new(x, y),
                     },
@@ -179,8 +179,7 @@ fn drag_tile(
         if let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, event.position) {
             for (entity, mut draggable, mut transform) in query.iter_mut() {
                 if mouse_input.pressed(MouseButton::Left) && draggable.is_dragging {
-                    transform.translation =
-                        Vec3::new(world_position.x, world_position.y, transform.translation.z);
+                    transform.translation = world_position.extend(transform.translation.z);
                     break;
                 }
 
@@ -198,51 +197,41 @@ fn drag_tile(
                     if world_position.y < -BOARD_CENTER {
                         // But we still need to free up the grid cell if the tile was on the board
                         if draggable.is_on_board {
-                            let (col, row) = BoardState::closest_cell_to_world(
-                                draggable.last_grid_position.0,
-                                draggable.last_grid_position.1,
-                            );
+                            let (col, row) =
+                                BoardState::closest_cell_to_world(draggable.last_grid_position);
                             board.remove_tile(col, row);
                         }
                         draggable.is_on_board = false;
                         continue;
                     }
 
-                    let (col, row) =
-                        BoardState::closest_cell_to_world(world_position.x, world_position.y);
+                    let (col, row) = BoardState::closest_cell_to_world(world_position);
 
                     if board.is_occupied(col, row) {
                         // If the cell we're trying to move into is occupied, move the tile back
-                        let (last_x, last_y) = draggable.last_grid_position;
-                        transform.translation = Vec3::new(last_x, last_y, transform.translation.z);
+                        transform.translation =
+                            draggable.last_grid_position.extend(transform.translation.z);
                         // Nothing changed, so don't update the board state.
                     } else {
                         // Otherwise it's a free cell, so figure out the world position of the cell
                         // and move the tile there.
-                        let (cell_center_world_x, cell_center_world_y) =
-                            BoardState::world_from_xy(col, row);
-                        transform.translation = Vec3::new(
-                            cell_center_world_x,
-                            cell_center_world_y,
-                            transform.translation.z,
-                        );
+                        let cell_center_world = BoardState::world_from_xy(col, row);
+                        transform.translation = cell_center_world.extend(transform.translation.z);
 
                         // Update internal state so we know if another tile can move here
                         board.place_tile(col, row, entity);
                         draggable.is_on_board = true;
 
                         // Then free up the old position
-                        let (old_col, old_row) = BoardState::closest_cell_to_world(
-                            draggable.last_grid_position.0,
-                            draggable.last_grid_position.1,
-                        );
+                        let (old_col, old_row) =
+                            BoardState::closest_cell_to_world(draggable.last_grid_position);
                         board.remove_tile(old_col, old_row);
 
                         // This is what we'll snap the tile back to, if the player tries to
                         // move it to an occupied cell in the future. Do this after we free up
                         // the old position, since we use the old value to determine where the
                         // tile came from.
-                        draggable.last_grid_position = (cell_center_world_x, cell_center_world_y);
+                        draggable.last_grid_position = cell_center_world;
                     }
                 }
             }

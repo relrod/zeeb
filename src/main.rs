@@ -24,6 +24,7 @@ struct Tile {
 struct Draggable {
     is_dragging: bool,
     last_grid_position: (f32, f32),
+    is_on_board: bool,
 }
 
 #[derive(Resource)]
@@ -153,6 +154,7 @@ fn create_letter_tiles(mut commands: Commands) {
                     Draggable {
                         is_dragging: false,
                         last_grid_position: (x, y),
+                        is_on_board: false,
                     },
                 ))
                 .with_children(|builder| {
@@ -193,6 +195,19 @@ fn drag_tile(
                 if mouse_input.just_released(MouseButton::Left) && draggable.is_dragging {
                     draggable.is_dragging = false;
 
+                    // If we are underneath the board, it's a free-for-all, don't snap to grid
+                    if world_position.y < -BOARD_CENTER {
+                        // But we still need to free up the grid cell if the tile was on the board
+                        if draggable.is_on_board {
+                            let (col, row) =
+                                BoardState::closest_cell_to_world(draggable.last_grid_position.0, draggable.last_grid_position.1);
+                            board.remove_tile(col, row);
+                        }
+                        draggable.is_on_board = false;
+                        continue;
+                    }
+
+
                     let (col, row) =
                         BoardState::closest_cell_to_world(world_position.x, world_position.y);
 
@@ -214,6 +229,7 @@ fn drag_tile(
 
                         // Update internal state so we know if another tile can move here
                         board.place_tile(col, row, entity);
+                        draggable.is_on_board = true;
 
                         // Then free up the old position
                         let (old_col, old_row) = BoardState::closest_cell_to_world(

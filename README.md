@@ -11,8 +11,6 @@ This implementation is built on Bevy in Rust.
 
 ## Screenshot
 
-(The tiles don't snap to the grid yet, ignore that :D)
-
 <img src="screenshot.png">
 
 ## License

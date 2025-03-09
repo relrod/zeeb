@@ -84,6 +84,75 @@ impl BoardState {
         }
         closest_cell
     }
+
+    /// Find a tile. Any tile. One from which to start a traversal of the board.
+    ///
+    /// There is surely a more efficient way to do this (probably caching where
+    /// a tile is placed at placement time and using that and keeping it
+    /// updated), but right now this just scans the board and looks for the
+    /// first thing.
+    fn first_tile(&self) -> Option<(usize, usize)> {
+        for row in 0..BOARD_SIZE {
+            for col in 0..BOARD_SIZE {
+                let Some(_) = self.grid[row][col] else {
+                    continue;
+                };
+                return Some((col, row));
+            }
+        }
+        None
+    }
+
+    /// Determine if the board is contiguous, i.e. all tiles are connected to
+    /// each other. This is a simple flood-fill algorithm (DFS) that starts at
+    /// the first tile it finds and marks all connected tiles as visited.
+    #[allow(dead_code)]
+    fn is_contiguous(&self) -> bool {
+        let mut visited = [[false; BOARD_SIZE]; BOARD_SIZE];
+        let mut stack: Vec<(usize, usize)> = Vec::new();
+        let Some(start) = self.first_tile() else {
+            // If no tile is on the board, we are trivially connected.
+            return true;
+        };
+        stack.push(start);
+        while let Some((col, row)) = stack.pop() {
+            if visited[row][col] || self.grid[row][col].is_none() {
+                continue;
+            }
+
+            visited[row][col] = true;
+
+            // Check up, down, left, right
+            for (dr, dc) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+                let neighbor_row = row as i8 + dr;
+                let neighbor_col = col as i8 + dc;
+                // Stay in bounds, especially since we cast away from usize above
+                if neighbor_row < 0 || neighbor_col < 0 {
+                    continue;
+                }
+                // We know they're >= 0 now, so just shadow them
+                let neighbor_row = neighbor_row as usize;
+                let neighbor_col = neighbor_col as usize;
+                if neighbor_row >= BOARD_SIZE || neighbor_col >= BOARD_SIZE {
+                    continue;
+                }
+                // We're in bounds; check the cell
+                if self.grid[neighbor_row][neighbor_col].is_some() {
+                    stack.push((neighbor_col, neighbor_row));
+                }
+            }
+        }
+
+        #[allow(clippy::needless_range_loop)]
+        for row in 0..BOARD_SIZE {
+            for col in 0..BOARD_SIZE {
+                if self.grid[row][col].is_some() && !visited[row][col] {
+                    return false;
+                }
+            }
+        }
+        true
+    }
 }
 
 fn main() {

@@ -14,7 +14,7 @@ const LETTER_ROWS: [&str; 12] = [
 ];
 
 #[derive(Component)]
-struct LetterTile;
+struct LetterTile(char);
 
 #[derive(Component)]
 struct Draggable {
@@ -153,6 +153,69 @@ impl BoardState {
         }
         true
     }
+
+    /// Collect collections of letters ("words") from the board.
+    ///
+    /// "words" is quoted because we collect any collection of letters greater
+    /// than length 1.
+    ///
+    /// As a micro-optimization, we could stop and return early if we come
+    /// across any two letter words, as those are invalid in Zeeb. But we don't
+    /// do that here. We just collect all "words" of length >= 2.
+    fn words(&self, query: &Query<&LetterTile>) -> Vec<String> {
+        let mut words: Vec<String> = Vec::new();
+        let mut current_word: String = String::new();
+
+        // For every column, scan down and look for words
+        for col in 0..BOARD_SIZE {
+            for row in 0..BOARD_SIZE {
+                let Some(tile) = self.grid[row][col] else {
+                    if current_word.len() > 1 {
+                        words.push(current_word.clone());
+                        current_word.clear();
+                    }
+                    continue;
+                };
+
+                let Ok(LetterTile(tile)) = query.get(tile) else {
+                    continue;
+                };
+                current_word.push(*tile);
+            }
+
+            // If we're at the end of the column and have a word, add it
+            if current_word.len() > 1 {
+                words.push(current_word.clone());
+            }
+            current_word.clear();
+        }
+
+        // Now the same for rows
+        for row in 0..BOARD_SIZE {
+            for col in 0..BOARD_SIZE {
+                let Some(tile) = self.grid[row][col] else {
+                    if current_word.len() > 1 {
+                        words.push(current_word.clone());
+                        current_word.clear();
+                    }
+                    continue;
+                };
+
+                let Ok(LetterTile(tile)) = query.get(tile) else {
+                    continue;
+                };
+                current_word.push(*tile);
+            }
+
+            // If we're at the end of the row and have a word, add it
+            if current_word.len() > 1 {
+                words.push(current_word.clone());
+            }
+            current_word.clear();
+        }
+
+        words
+    }
 }
 
 fn main() {
@@ -230,7 +293,7 @@ fn create_letter_tiles(mut commands: Commands) {
                         is_on_board: false,
                         game_start_position: Vec3::new(x, y, 100.0),
                     },
-                    LetterTile,
+                    LetterTile(letter.to_ascii_lowercase()),
                 ))
                 .with_children(|builder| {
                     builder.spawn((
@@ -250,6 +313,7 @@ fn drag_tile(
     camera_query: Query<(&Camera, &GlobalTransform)>,
     window: Single<&Window>,
     mut board: ResMut<BoardState>,
+    q_lettertiles: Query<&LetterTile>,
 ) {
     let Ok((camera, camera_transform)) = camera_query.get_single() else {
         return;
@@ -317,6 +381,12 @@ fn drag_tile(
                 // the old position, since we use the old value to determine where the
                 // tile came from.
                 draggable.last_position = cell_center_world;
+            }
+
+            // Print out the words on the board
+            let words = board.words(&q_lettertiles);
+            for word in words {
+                println!("Word: {}", word);
             }
         }
     }

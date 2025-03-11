@@ -306,9 +306,11 @@ fn drag_tile(
                 board.place_tile(col, row, entity);
                 draggable.is_on_board = true;
 
-                // Then free up the old position
+                // Then free up the old position *if* the old cell is different from the new one
                 let (old_col, old_row) = BoardState::closest_cell_to_world(draggable.last_position);
-                board.remove_tile(old_col, old_row);
+                if old_col != col || old_row != row {
+                    board.remove_tile(old_col, old_row);
+                }
 
                 // This is what we'll snap the tile back to, if the player tries to
                 // move it to an occupied cell in the future. Do this after we free up

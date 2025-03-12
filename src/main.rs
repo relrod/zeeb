@@ -172,15 +172,15 @@ impl BoardState {
                 let Some(tile) = self.grid[row][col] else {
                     if current_word.len() > 1 {
                         words.push(current_word.clone());
-                        current_word.clear();
                     }
+                    current_word.clear();
                     continue;
                 };
 
-                let Ok(LetterTile(tile)) = query.get(tile) else {
+                let Ok(LetterTile(letter)) = query.get(tile) else {
                     continue;
                 };
-                current_word.push(*tile);
+                current_word.push(*letter);
             }
 
             // If we're at the end of the column and have a word, add it
@@ -196,15 +196,15 @@ impl BoardState {
                 let Some(tile) = self.grid[row][col] else {
                     if current_word.len() > 1 {
                         words.push(current_word.clone());
-                        current_word.clear();
                     }
+                    current_word.clear();
                     continue;
                 };
 
-                let Ok(LetterTile(tile)) = query.get(tile) else {
+                let Ok(LetterTile(letter)) = query.get(tile) else {
                     continue;
                 };
-                current_word.push(*tile);
+                current_word.push(*letter);
             }
 
             // If we're at the end of the row and have a word, add it

@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::board_state::BoardState;
 use crate::consts::*;
 use crate::letter_tile::LetterTile;
+use crate::wordlist::WordList;
 
 #[derive(Component)]
 pub struct Draggable {
@@ -19,6 +20,8 @@ pub fn drag_tile(
     window: Single<&Window>,
     mut board: ResMut<BoardState>,
     q_lettertiles: Query<&LetterTile>,
+    // Temporary hack:
+    valid_word_list: Res<WordList>,
 ) {
     let Ok((camera, camera_transform)) = camera_query.get_single() else {
         return;
@@ -91,7 +94,11 @@ pub fn drag_tile(
             // Print out the words on the board
             let words = board.words(&q_lettertiles);
             for word in words {
-                println!("Word: {}", word);
+                print!("Word: {}", word);
+                if valid_word_list.0.contains(&word) {
+                    print!(" - Valid!");
+                }
+                println!();
             }
         }
     }

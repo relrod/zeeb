@@ -62,7 +62,6 @@ pub fn create_letter_tiles(mut commands: Commands) {
             } else {
                 (i - 10) as f32 * TILE_SIZE - BOARD_CENTER + TILE_SIZE / 2.0
             };
-
             let y = if i < 10 { first_row } else { second_row };
             commands
                 .spawn((

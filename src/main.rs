@@ -3,6 +3,7 @@ mod consts;
 mod drag;
 mod letter_tile;
 mod startup;
+mod wordlist;
 
 use bevy::prelude::*;
 
@@ -10,11 +11,19 @@ use crate::board_state::BoardState;
 use crate::drag::{Draggable, drag_tile};
 use crate::letter_tile::LetterTile;
 use crate::startup::{create_letter_tiles, draw_board, setup};
+use crate::wordlist::determine_valid_words;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_systems(Startup, (setup, draw_board, create_letter_tiles))
+        .add_systems(
+            Startup,
+            (
+                setup,
+                draw_board,
+                (create_letter_tiles, determine_valid_words).chain(),
+            ),
+        )
         .add_systems(Update, (drag_tile, reset_tiles))
         .run();
 }

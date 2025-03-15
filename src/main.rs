@@ -1,3 +1,7 @@
+#![warn(clippy::pedantic)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::needless_pass_by_value)]
+
 mod board_state;
 mod consts;
 mod drag;
@@ -34,7 +38,7 @@ fn reset_tiles(
     mut board: ResMut<BoardState>,
 ) {
     if keyboard_input.just_pressed(KeyCode::KeyR) {
-        for (mut draggable, mut transform) in query.iter_mut() {
+        for (mut draggable, mut transform) in &mut query {
             draggable.is_dragging = false; // Might be mid-drag when we reset
             transform.translation = draggable.game_start_position;
             draggable.last_position = transform.translation.xy();

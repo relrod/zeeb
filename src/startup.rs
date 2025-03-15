@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use rand::seq::IndexedMutRandom;
 
 use crate::board_state::BoardState;
-use crate::consts::*;
+use crate::consts::{BOARD_CENTER, BOARD_SIZE, LETTER_ROWS, TILE_SIZE};
 use crate::drag::Draggable;
 use crate::letter_tile::LetterTile;
 
@@ -41,7 +41,7 @@ pub fn draw_board(mut commands: Commands) {
     }
 }
 
-/// Create 12 [LetterTile]s with "random" letters copied from a game who shall
+/// Create 12 [`LetterTile`]s with "random" letters copied from a game who shall
 /// remain un-named.
 ///
 /// We want two rows at the bottom: 10 in the top row and 2 in the bottom row.

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::board_state::BoardState;
-use crate::consts::*;
+use crate::consts::{BOARD_CENTER, TILE_SIZE};
 use crate::letter_tile::LetterTile;
 use crate::wordlist::WordList;
 
@@ -33,7 +33,7 @@ pub fn drag_tile(
         return;
     };
 
-    for (entity, mut draggable, mut transform) in query.iter_mut() {
+    for (entity, mut draggable, mut transform) in &mut query {
         if mouse_input.pressed(MouseButton::Left) && draggable.is_dragging {
             transform.translation = world_position.extend(transform.translation.z);
             break;
@@ -94,7 +94,7 @@ pub fn drag_tile(
             // Print out the words on the board
             let words = board.words(&q_lettertiles);
             for word in words {
-                print!("Word: {}", word);
+                print!("Word: {word}");
                 if valid_word_list.0.contains(&word) {
                     print!(" - Valid!");
                 }

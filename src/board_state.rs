@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::consts::*;
+use crate::consts::{BOARD_CENTER, BOARD_SIZE, TILE_SIZE};
 use crate::letter_tile::LetterTile;
 
 #[derive(Resource)]
@@ -103,15 +103,21 @@ impl BoardState {
 
             // Check up, down, left, right
             for (dr, dc) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
-                let neighbor_row = row as i8 + dr;
-                let neighbor_col = col as i8 + dc;
+                let row = i8::try_from(row).expect("row is in bounds");
+                let col = i8::try_from(col).expect("col is in bounds");
+                let neighbor_row = row + dr;
+                let neighbor_col = col + dc;
                 // Stay in bounds, especially since we cast away from usize above
                 if neighbor_row < 0 || neighbor_col < 0 {
                     continue;
                 }
-                // We know they're >= 0 now, so just shadow them
+                // We know they're >= 0 now, so just shadow them... and shut clippy up
+                #[allow(clippy::cast_sign_loss)]
                 let neighbor_row = neighbor_row as usize;
+
+                #[allow(clippy::cast_sign_loss)]
                 let neighbor_col = neighbor_col as usize;
+
                 if neighbor_row >= BOARD_SIZE || neighbor_col >= BOARD_SIZE {
                     continue;
                 }

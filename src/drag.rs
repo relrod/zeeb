@@ -55,6 +55,8 @@ pub fn drag_tile(
                 if draggable.is_on_board {
                     let (col, row) = BoardState::closest_cell_to_world(draggable.last_position);
                     board.remove_tile(col, row);
+                    // If we're removing a tile from the board, still show the status
+                    board.print_status(&q_lettertiles, &valid_word_list);
                 }
                 draggable.is_on_board = false;
                 // And still keep track of the new "last" position
@@ -90,16 +92,7 @@ pub fn drag_tile(
                 // tile came from.
                 draggable.last_position = cell_center_world;
             }
-
-            // Print out the words on the board
-            let words = board.words(&q_lettertiles);
-            for word in words {
-                print!("Word: {word}");
-                if valid_word_list.0.contains(&word) {
-                    print!(" - Valid!");
-                }
-                println!();
-            }
+            board.print_status(&q_lettertiles, &valid_word_list);
         }
     }
 }

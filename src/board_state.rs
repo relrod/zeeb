@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::consts::{BOARD_CENTER, BOARD_SIZE, TILE_SIZE};
 use crate::letter_tile::LetterTile;
+use crate::wordlist::WordList;
 
 #[derive(Resource)]
 pub struct BoardState {
@@ -35,6 +36,53 @@ impl BoardState {
                 self.grid[row][col] = None;
             }
         }
+    }
+
+    /// Evaluate whether or not we are in a winning state
+    ///
+    /// To be a win, three conditions must be met:
+    /// 1. All tiles must be used
+    /// 2. All tiles must be contiguously connected
+    /// 3. All words must be valid
+    pub fn evaluate(&self, valid_word_list: &Res<WordList>, q_lettertiles: &Query<&LetterTile>) -> bool {
+        // 1. Ensure that exactly 12 tiles are on the board
+        // It would be better to check each Draggable, we'd have to change the
+        // query.
+        let tile_count = self.grid.iter().flatten().filter(|tile| tile.is_some()).count();
+        if tile_count != 12 {
+            return false;
+        }
+
+        // 2. All tiles must be connected
+        if !self.is_contiguous() {
+            return false;
+        }
+
+        let words = self.words(q_lettertiles);
+        for word in words {
+            if !valid_word_list.0.contains(&word) {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn print_status(
+        &self,
+        q_lettertiles: &Query<&LetterTile>,
+        valid_word_list: &Res<WordList>,
+    ) {
+        // Print out the words on the board
+        let words = self.words(&q_lettertiles);
+        for word in words {
+            print!("Word: {word}");
+            if valid_word_list.0.contains(&word) {
+                print!(" - Valid!");
+            }
+            println!();
+        }
+        let win_state = self.evaluate(&valid_word_list, &q_lettertiles);
+        println!("Win state: {win_state}");
     }
 
     pub fn world_from_xy(x: usize, y: usize) -> Vec2 {

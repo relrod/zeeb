@@ -44,11 +44,20 @@ impl BoardState {
     /// 1. All tiles must be used
     /// 2. All tiles must be contiguously connected
     /// 3. All words must be valid
-    pub fn evaluate(&self, valid_word_list: &Res<WordList>, q_lettertiles: &Query<&LetterTile>) -> bool {
+    pub fn evaluate(
+        &self,
+        valid_word_list: &Res<WordList>,
+        q_lettertiles: &Query<&LetterTile>,
+    ) -> bool {
         // 1. Ensure that exactly 12 tiles are on the board
         // It would be better to check each Draggable, we'd have to change the
         // query.
-        let tile_count = self.grid.iter().flatten().filter(|tile| tile.is_some()).count();
+        let tile_count = self
+            .grid
+            .iter()
+            .flatten()
+            .filter(|tile| tile.is_some())
+            .count();
         if tile_count != 12 {
             return false;
         }
@@ -73,7 +82,7 @@ impl BoardState {
         valid_word_list: &Res<WordList>,
     ) {
         // Print out the words on the board
-        let words = self.words(&q_lettertiles);
+        let words = self.words(q_lettertiles);
         for word in words {
             print!("Word: {word}");
             if valid_word_list.0.contains(&word) {
@@ -81,7 +90,7 @@ impl BoardState {
             }
             println!();
         }
-        let win_state = self.evaluate(&valid_word_list, &q_lettertiles);
+        let win_state = self.evaluate(valid_word_list, q_lettertiles);
         println!("Win state: {win_state}");
     }
 
